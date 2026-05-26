@@ -1,0 +1,14 @@
+# Binaries
+nameforge
+nameforge.exe
+
+# Environment files
+.env
+
+# Database volumes
+pgdata/
+redisdata/
+
+# OS metadata
+.DS_Store
+Thumbs.db

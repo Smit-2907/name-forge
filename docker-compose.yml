@@ -1,0 +1,66 @@
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nameforge_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: nameforge
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nameforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nameforge_redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  nameforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nameforge_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/nameforge?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - USE_MOCK_PROVIDERS=true
+      - WORKER_COUNT=20
+      - CACHE_TTL_HOURS=24
+      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_WINDOW_MS=60000
+      - OPENAI_API_KEY=
+      - PORKBUN_API_KEY=
+      - PORKBUN_SECRET_KEY=
+      - NAMECHEAP_USERNAME=
+      - NAMECHEAP_API_KEY=
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
