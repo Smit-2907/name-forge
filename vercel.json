@@ -20,10 +20,6 @@
     {
       "source": "/metrics",
       "destination": "https://name-forge-backend.up.railway.app/metrics"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/web/$1"
     }
   ]
 }
