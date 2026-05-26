@@ -208,3 +208,4 @@ Open [http://localhost:8080](http://localhost:8080) to access the search dashboa
 * Set `LOG_LEVEL=info` to reduce console write operations under high traffic.
 * Scale Fiber horizontally behind a reverse proxy (e.g. Nginx or Cloudflare) which handles SSL termination.
 * Configure Prometheus to scrape the `/metrics` endpoint to view rate-limits, worker pools, and cache hit metrics.
+# landingpage_leadlense
