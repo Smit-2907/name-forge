@@ -35,5 +35,5 @@ func SetupRouter(app *fiber.App, dbConn *sql.DB, cacheSvc *cache.CacheService, c
 	})
 
 	// Serve Static UI Front-end template
-	app.Static("/", "./web")
+	app.Static("/", "./public")
 }

@@ -28,7 +28,7 @@ WORKDIR /app
 COPY --from=builder /app/nameforge .
 
 # Copy static frontend assets
-COPY web/ ./web/
+COPY public/ ./public/
 
 # Expose HTTP port
 EXPOSE 8080

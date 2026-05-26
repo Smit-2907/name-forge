@@ -1,7 +1,5 @@
 {
   "cleanUrls": true,
-  "buildCommand": "echo 'No build'",
-  "outputDirectory": "web",
   "rewrites": [
     {
       "source": "/generate",
