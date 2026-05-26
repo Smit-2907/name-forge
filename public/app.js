@@ -307,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <button class="btn-action btn-copy" style="width: 32px; height: 32px;" title="Copy Domain" data-domain="${d.domain}">
                                     <i class="fa-regular fa-copy"></i>
                                 </button>
-                                <button class="btn-register" style="padding: 6px 12px; font-size: 0.75rem;" ${registerDisabled} onclick="window.open('${getRegisterUrl(d.platform, d.domain)}', '_blank')">
+                                <button class="btn-register" style="padding: 6px 12px; font-size: 0.75rem;" ${registerDisabled} data-platform="${d.platform}" data-domain="${d.domain}">
                                     Get
                                 </button>
                             </div>
@@ -342,6 +342,16 @@ document.addEventListener("DOMContentLoaded", () => {
                             button.style.borderColor = "";
                         }, 2000);
                     });
+                });
+            });
+
+            // Bind register button listener for all register buttons in this card
+            card.querySelectorAll(".btn-register").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    const button = e.currentTarget;
+                    const platform = button.getAttribute("data-platform");
+                    const domain = button.getAttribute("data-domain");
+                    window.open(getRegisterUrl(platform, domain), '_blank');
                 });
             });
 
