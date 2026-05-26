@@ -29,14 +29,15 @@ func (h *HybridGenerator) Generate(req *models.GenerateRequest, aiNames []string
 	var aiRoots []string
 	for _, name := range aiNames {
 		name = strings.ToLower(name)
-		if len(name) <= 3 {
+		nameRunes := []rune(name)
+		if len(nameRunes) <= 3 {
 			aiRoots = append(aiRoots, name)
 			continue
 		}
-		// Cut the word roughly in half
-		mid := len(name) / 2
-		aiRoots = append(aiRoots, name[:mid])
-		aiRoots = append(aiRoots, name[mid:])
+		// Cut the word roughly in half (safe rune slicing)
+		mid := len(nameRunes) / 2
+		aiRoots = append(aiRoots, string(nameRunes[:mid]))
+		aiRoots = append(aiRoots, string(nameRunes[mid:]))
 	}
 
 	// Seed options for recombination
@@ -55,9 +56,10 @@ func (h *HybridGenerator) Generate(req *models.GenerateRequest, aiNames []string
 		} else if len(aiRoots) > 0 {
 			base := poolBases[r.Intn(len(poolBases))]
 			root := aiRoots[r.Intn(len(aiRoots))]
-			// Apply truncation on base if too long
-			if len(base) > 4 {
-				base = base[:4]
+			// Apply truncation on base if too long (safe rune slicing)
+			baseRunes := []rune(base)
+			if len(baseRunes) > 4 {
+				base = string(baseRunes[:4])
 			}
 			combined = smoothVowelsAndConsonants(base, root)
 		} else {

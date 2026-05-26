@@ -30,6 +30,9 @@ func main() {
 
 	// 2. Load Configuration
 	cfg := config.LoadConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal().Err(err).Msg("Configuration validation failed")
+	}
 	zerolog.SetGlobalLevel(cfg.LogLevel)
 
 	// 3. Initialize Postgres
@@ -40,6 +43,7 @@ func main() {
 		log.Error().Err(err).Msg("Database connection failed. Proceeding with database in read-only/offline mode.")
 	} else {
 		defer dbConn.Close()
+		defer db.StopBackgroundLogger()
 	}
 
 	// 4. Initialize Redis Cache
@@ -52,13 +56,10 @@ func main() {
 	var activeProviders []providers.DomainProvider
 
 	if cfg.UseMockProviders {
-		log.Info().Msg("USE_MOCK_PROVIDERS is true. Booting with 5 simulated Mock Providers for comparison.")
+		log.Info().Msg("USE_MOCK_PROVIDERS is true. Booting with 2 simulated Mock Providers for comparison.")
 		activeProviders = []providers.DomainProvider{
 			providers.NewMockProvider("GoDaddy", "INR", 899.0, 449.0, 5299.0, 3299.0),
 			providers.NewMockProvider("Hostinger", "INR", 749.0, 399.0, 4999.0, 3199.0),
-			providers.NewMockProvider("BigRock", "INR", 929.0, 459.0, 5499.0, 3399.0),
-			providers.NewMockProvider("Porkbun", "USD", 9.25, 5.50, 62.50, 36.50),
-			providers.NewMockProvider("Namecheap", "USD", 9.88, 5.90, 64.99, 38.99),
 		}
 	} else {
 		log.Info().Msg("Booting with real domain providers. Missing credentials will fallback to mock.")
@@ -71,33 +72,10 @@ func main() {
 		// 2. Hostinger
 		hostingerKey := os.Getenv("HOSTINGER_API_KEY")
 		activeProviders = append(activeProviders, providers.NewHostingerProvider(hostingerKey))
-
-		// 3. BigRock
-		bigrockResellerID := os.Getenv("BIGROCK_RESELLER_ID")
-		bigrockKey := os.Getenv("BIGROCK_API_KEY")
-		activeProviders = append(activeProviders, providers.NewBigRockProvider(bigrockResellerID, bigrockKey))
-
-		// 4. Porkbun
-		porkbunKey := cfg.PorkbunAPIKey
-		porkbunSecret := cfg.PorkbunSecretKey
-		if porkbunKey != "" && porkbunSecret != "" {
-			activeProviders = append(activeProviders, providers.NewPorkbunProvider(porkbunKey, porkbunSecret))
-		} else {
-			activeProviders = append(activeProviders, providers.NewMockProvider("Porkbun", "USD", 9.25, 5.50, 62.50, 36.50))
-		}
-
-		// 5. Namecheap
-		namecheapUser := cfg.NamecheapUsername
-		namecheapKey := cfg.NamecheapAPIKey
-		if namecheapUser != "" && namecheapKey != "" {
-			activeProviders = append(activeProviders, providers.NewNamecheapProvider(namecheapUser, namecheapKey, cfg.NamecheapClientIP))
-		} else {
-			activeProviders = append(activeProviders, providers.NewMockProvider("Namecheap", "USD", 9.88, 5.90, 64.99, 38.99))
-		}
 	}
 
 	// 6. Instantiate Naming Generator Orchestrator & Worker Pool
-	orchestrator := generator.NewOrchestrator(cfg.OpenAIAPIKey)
+	orchestrator := generator.NewOrchestrator(cfg.GeminiAPIKey)
 	cacheTTL := time.Duration(cfg.CacheTTLHours) * time.Hour
 	workerPool := workers.NewWorkerPool(activeProviders, cacheSvc, cacheTTL)
 
@@ -106,6 +84,7 @@ func main() {
 		AppName:      "NameForge Engine v1.0",
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
+		BodyLimit:    cfg.MaxRequestBodySize,
 	})
 
 	// 8. Bind Routes and Middlewares

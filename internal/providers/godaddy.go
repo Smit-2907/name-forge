@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -21,18 +22,24 @@ func NewGoDaddyProvider(apiKey, apiSecret string) *GoDaddyProvider {
 	return &GoDaddyProvider{
 		APIKey:    apiKey,
 		APISecret: apiSecret,
-		Client:    &http.Client{Timeout: 5 * time.Second},
+		Client: &http.Client{
+			Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 20,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
 	}
 }
 
 func (g *GoDaddyProvider) CheckAvailability(ctx context.Context, domain string) (*DomainResult, error) {
 	if g.APIKey == "" || g.APISecret == "" {
-		// Mock Mode
-		return g.mockCheck(ctx, domain)
+		return KeylessCheckAvailability(ctx, g.Client, domain)
 	}
 
-	url := fmt.Sprintf("https://api.godaddy.com/v1/domains/available?domain=%s", domain)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	targetURL := fmt.Sprintf("https://api.godaddy.com/v1/domains/available?domain=%s", url.QueryEscape(domain))
+	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -65,15 +72,87 @@ func (g *GoDaddyProvider) CheckAvailability(ctx context.Context, domain string) 
 	}, nil
 }
 
+func getGoDaddyPricingContext(tld string, hpPrice float64) (promoPrice, renewalPrice, standalone1Yr float64) {
+	switch strings.ToLower(tld) {
+	case "com":
+		// GoDaddy .com promo: ₹499 (requires 2-yr registration), renewal: ₹1399, standalone 1-yr: ₹1199
+		return 499.00, 1399.00, 1199.00
+	case "in":
+		// GoDaddy .in promo: ₹399 (requires 2-yr registration), renewal: ₹699, standalone 1-yr: ₹699
+		return 399.00, 699.00, 699.00
+	case "net":
+		// GoDaddy .net promo: ₹799, renewal: ₹1599, standalone 1-yr: ₹1399
+		return 799.00, 1599.00, 1399.00
+	case "org":
+		// GoDaddy .org promo: ₹799, renewal: ₹1399, standalone 1-yr: ₹1299
+		return 799.00, 1399.00, 1299.00
+	case "ai":
+		// GoDaddy .ai is expensive and rarely has promos, standard price is around ₹5999
+		return 5999.00, 5999.00, 5999.00
+	case "io":
+		// GoDaddy .io standard price is around ₹3799
+		return 3799.00, 3799.00, 3799.00
+	default:
+		// Default fallback based on Hostinger price or base rate
+		base := hpPrice
+		if base <= 0 {
+			base = 999.00
+		}
+		return base, base * 1.5, base * 1.3
+	}
+}
+
 func (g *GoDaddyProvider) GetPrice(ctx context.Context, domain string) (*PriceResult, error) {
 	if g.APIKey == "" || g.APISecret == "" {
-		// Mock Mode
-		return g.mockPrice(ctx, domain)
+		// Keyless flow: Query Hostinger live prices (if not circuit-broken) and scale them
+		var hpVal float64 = 0
+		parts := strings.Split(domain, ".")
+		tld := "com"
+		if len(parts) >= 2 {
+			tld = strings.ToLower(parts[len(parts)-1])
+		}
+
+		if !IsScraperTripped() {
+			hp := NewHostingerProvider("")
+			hpPrice, err := hp.getLivePrice(ctx, domain)
+			if err == nil && hpPrice != nil {
+				hpVal = hpPrice.Price
+				RecordScraperSuccess()
+			} else {
+				RecordScraperFailure()
+			}
+		}
+
+		promo, renewal, standalone := getGoDaddyPricingContext(tld, hpVal)
+
+		var plans []PricePlan
+		plans = append(plans, PricePlan{
+			Name:     "GoDaddy (1-Yr Domain Only)",
+			Price:    standalone,
+			Currency: "INR",
+		})
+		plans = append(plans, PricePlan{
+			Name:     "GoDaddy (2-Yr Term Avg)",
+			Price:    (promo + renewal) / 2,
+			Currency: "INR",
+		})
+		plans = append(plans, PricePlan{
+			Name:     "GoDaddy (Domain + Email Plan)",
+			Price:    promo + 348.00,
+			Currency: "INR",
+		})
+
+		return &PriceResult{
+			Price:    standalone,
+			Currency: "INR",
+			Platform: "GoDaddy",
+			Plans:    plans,
+		}, nil
 	}
 
-	// GoDaddy requires query parameters or schema schema
-	url := fmt.Sprintf("https://api.godaddy.com/v1/domains/available?domain=%s", domain)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	// GoDaddy official API flow
+	targetURL := fmt.Sprintf("https://api.godaddy.com/v1/domains/available?domain=%s", url.QueryEscape(domain))
+	req, err := http.NewRequestWithContext(ctx, "GET", targetURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -107,10 +186,52 @@ func (g *GoDaddyProvider) GetPrice(ctx context.Context, domain string) (*PriceRe
 		godaddyResp.Currency = "USD"
 	}
 
+	// Build plans for official API
+	var plans []PricePlan
+	emailPrice := 4.00
+	if godaddyResp.Currency == "INR" {
+		emailPrice = 348.00
+	}
+	
+	// Estimate standard, renewal and promo based on the retrieved priceVal
+	var renewalVal float64
+	var promoVal float64
+	var standaloneVal float64
+	if godaddyResp.Currency == "INR" {
+		parts := strings.Split(domain, ".")
+		tld := "com"
+		if len(parts) >= 2 {
+			tld = strings.ToLower(parts[len(parts)-1])
+		}
+		promoVal, renewalVal, standaloneVal = getGoDaddyPricingContext(tld, priceVal)
+	} else {
+		// Fallback for USD/other currencies
+		promoVal = priceVal * 0.7 // approx promo discount
+		renewalVal = priceVal * 1.5
+		standaloneVal = priceVal
+	}
+
+	plans = append(plans, PricePlan{
+		Name:     "GoDaddy (1-Yr Domain Only)",
+		Price:    standaloneVal,
+		Currency: godaddyResp.Currency,
+	})
+	plans = append(plans, PricePlan{
+		Name:     "GoDaddy (2-Yr Term Avg)",
+		Price:    (promoVal + renewalVal) / 2,
+		Currency: godaddyResp.Currency,
+	})
+	plans = append(plans, PricePlan{
+		Name:     "GoDaddy (Domain + Email Plan)",
+		Price:    promoVal + emailPrice,
+		Currency: godaddyResp.Currency,
+	})
+
 	return &PriceResult{
-		Price:    priceVal,
+		Price:    standaloneVal,
 		Currency: godaddyResp.Currency,
 		Platform: "GoDaddy",
+		Plans:    plans,
 	}, nil
 }
 
@@ -162,37 +283,44 @@ func (g *GoDaddyProvider) mockPrice(ctx context.Context, domain string) (*PriceR
 	case <-time.After(latency):
 	}
 
-	var price float64
-	// GoDaddy pricing in INR
-	switch strings.ToLower(tld) {
-	case "com":
-		price = 899.00
-	case "in":
-		price = 449.00
-	case "net":
-		price = 999.00
-	case "org":
-		price = 949.00
-	case "ai":
-		price = 5299.00
-	case "io":
-		price = 3299.00
-	default:
-		price = 1099.00
-	}
+	// Retrieve TLD specific plans
+	promo, renewal, standalone := getGoDaddyPricingContext(tld, 0)
 
 	// Add deterministic minor variation: e.g. -₹50 to +₹150
 	variation := float64(int(hash%200) - 50)
-	price += variation
+	promo += variation
+	standalone += variation
+	renewal += variation
 
 	// Premium domain simulation
 	if (hash % 10) == 0 {
-		price += float64(r.Intn(10000) + 5000)
+		premiumAdd := float64(r.Intn(10000) + 5000)
+		promo += premiumAdd
+		standalone += premiumAdd
+		renewal += premiumAdd
 	}
 
+	var plans []PricePlan
+	plans = append(plans, PricePlan{
+		Name:     "GoDaddy (1-Yr Domain Only)",
+		Price:    standalone,
+		Currency: "INR",
+	})
+	plans = append(plans, PricePlan{
+		Name:     "GoDaddy (2-Yr Term Avg)",
+		Price:    (promo + renewal) / 2,
+		Currency: "INR",
+	})
+	plans = append(plans, PricePlan{
+		Name:     "GoDaddy (Domain + Email Plan)",
+		Price:    promo + 348.00,
+		Currency: "INR",
+	})
+
 	return &PriceResult{
-		Price:    price,
+		Price:    standalone,
 		Currency: "INR",
 		Platform: "GoDaddy",
+		Plans:    plans,
 	}, nil
 }

@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    # Restrict Postgres port exposure to localhost only for administration
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  redis:
+    # Restrict Redis port exposure to localhost only
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  nameforge:
+    environment:
+      - LOG_LEVEL=warn
+      - APP_ENV=production
+    restart: always

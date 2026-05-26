@@ -16,15 +16,16 @@ import (
 // SetupRouter binds paths, setups middleware, and registers handlers.
 func SetupRouter(app *fiber.App, dbConn *sql.DB, cacheSvc *cache.CacheService, cfg *config.Config, orch *generator.Orchestrator, pool *workers.WorkerPool) {
 	// Initialize core route handler
-	h := NewHandler(dbConn, cfg, orch, pool)
+	h := NewHandler(dbConn, cacheSvc, cfg, orch, pool)
 
-	// Middlewares setup (Limiter, Logging, CORS)
-	SetupMiddleware(app, cfg.RateLimitMax, cfg.RateLimitWindowMs)
+	// Middlewares setup (Limiter, Logging, CORS, Auth, Secure Headers)
+	SetupMiddleware(app, dbConn, cacheSvc, cfg)
 
 	// REST API Endpoints
 	app.Post("/generate", h.GenerateHandler)
 	app.Post("/api/generate", h.GenerateHandler)
 	app.Get("/health", h.HealthCheckHandler)
+	app.Get("/readyz", h.ReadinessCheckHandler)
 	app.Get("/api/analytics", h.AnalyticsHandler)
 
 	// Prometheus Metrics Endpoint adaptation (since standard library handles net/http)

@@ -25,9 +25,8 @@ func NewBigRockProvider(resellerID, apiKey string) *BigRockProvider {
 
 func (b *BigRockProvider) CheckAvailability(ctx context.Context, domain string) (*DomainResult, error) {
 	if b.APIKey == "" {
-		return b.mockCheck(ctx, domain)
+		return KeylessCheckAvailability(ctx, b.Client, domain)
 	}
-
 	return b.mockCheck(ctx, domain)
 }
 
@@ -111,9 +110,27 @@ func (b *BigRockProvider) mockPrice(ctx context.Context, domain string) (*PriceR
 		price += float64(r.Intn(11000) + 6000)
 	}
 
+	var plans []PricePlan
+	plans = append(plans, PricePlan{
+		Name:     "BigRock (1-Yr Domain Only)",
+		Price:    price,
+		Currency: "INR",
+	})
+	plans = append(plans, PricePlan{
+		Name:     "BigRock (2-Yr Term Avg)",
+		Price:    price * 1.2,
+		Currency: "INR",
+	})
+	plans = append(plans, PricePlan{
+		Name:     "BigRock (Domain + Email Plan)",
+		Price:    price + 348.00,
+		Currency: "INR",
+	})
+
 	return &PriceResult{
 		Price:    price,
 		Currency: "INR",
 		Platform: "BigRock",
+		Plans:    plans,
 	}, nil
 }

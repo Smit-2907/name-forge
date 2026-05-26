@@ -7,10 +7,17 @@ type DomainResult struct {
 	Available bool   `json:"available"`
 }
 
-type PriceResult struct {
+type PricePlan struct {
+	Name     string  `json:"name"`
 	Price    float64 `json:"price"`
 	Currency string  `json:"currency"`
-	Platform string  `json:"platform"`
+}
+
+type PriceResult struct {
+	Price    float64     `json:"price"`
+	Currency string      `json:"currency"`
+	Platform string      `json:"platform"`
+	Plans    []PricePlan `json:"plans,omitempty"`
 }
 
 type DomainProvider interface {

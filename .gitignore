@@ -12,3 +12,7 @@ redisdata/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Agent assistant workspace directory
+.agents/
+

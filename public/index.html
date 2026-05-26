@@ -4,46 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NameForge | High-Performance AI Naming Engine</title>
-    <!-- Google Fonts -->
+    <meta name="description" content="Generate startup brand names using AI, check domain availability across TLDs, and compare live prices — in milliseconds.">
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome for icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Custom CSS -->
+    <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="glow-bg"></div>
-    <div class="glow-bg-secondary"></div>
 
     <header class="navbar">
-        <div class="logo">
-            <i class="fa-solid fa-fire-flame-curved logo-icon"></i>
+        <a class="logo" href="/">
+            <span class="logo-icon"><i class="fa-solid fa-hammer"></i></span>
             <span>Name<span class="logo-accent">Forge</span></span>
-        </div>
-        <div class="system-status">
-            <span class="status-item" id="status-db">
-                <i class="fa-solid fa-database"></i> Database: <span class="status-val text-dim">checking...</span>
-            </span>
-            <span class="status-item" id="status-cache">
-                <i class="fa-solid fa-bolt-lightning"></i> Cache: <span class="status-val text-dim">checking...</span>
-            </span>
-            <span class="status-item" id="status-workers">
-                <i class="fa-solid fa-users-gears"></i> Pool: <span class="status-val text-indigo">30 Workers</span>
-            </span>
+        </a>
+        <div class="navbar-right">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme" style="background: none; border: 1px solid var(--border-color); cursor: pointer;">
+                <i class="fa-solid fa-moon" id="theme-toggle-icon"></i>
+            </button>
+            <div class="system-status">
+                <span class="status-item" id="status-db">
+                    <i class="fa-solid fa-database"></i> DB: <span class="status-val text-dim">checking…</span>
+                </span>
+                <span class="status-item" id="status-cache">
+                    <i class="fa-solid fa-bolt-lightning"></i> Cache: <span class="status-val text-dim">checking…</span>
+                </span>
+                <span class="status-item" id="status-workers">
+                    <i class="fa-solid fa-microchip"></i> <span class="status-val text-indigo">30 Workers</span>
+                </span>
+            </div>
         </div>
     </header>
 
     <main class="container">
-        <!-- Hero Section -->
+
+        <!-- Hero -->
         <section class="hero">
-            <div class="badge">PRODUCTION-GRADE SaaS ENGINE</div>
-            <h1>Generate Names. Check Domains. <br><span class="gradient-text">Instantly.</span></h1>
-            <p class="subtitle">A massively concurrent Go backend generating startup names using AI, morphological combining, and hybrid recombination, checking availability across hundreds of TLDs in milliseconds.</p>
+            <div class="badge">Production-Grade SaaS Engine</div>
+            <h1>Generate Names. Check Domains.<br><span class="gradient-text">Instantly.</span></h1>
+            <p class="subtitle">A massively concurrent Go backend generating startup names using AI, morphological combining, and hybrid recombination — checking availability across hundreds of TLDs in milliseconds.</p>
         </section>
 
-        <!-- Search & Control Panel -->
+        <!-- Form Panel -->
         <section class="glass-card main-form">
             <form id="generator-form">
                 <div class="form-group">
@@ -80,71 +85,32 @@
                     <div class="form-group">
                         <label>Global TLDs</label>
                         <div class="checkbox-group">
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".com" checked>
-                                <span class="checkmark"></span>.com
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".net">
-                                <span class="checkmark"></span>.net
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".org">
-                                <span class="checkmark"></span>.org
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".co">
-                                <span class="checkmark"></span>.co
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".io" checked>
-                                <span class="checkmark"></span>.io
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".ai" checked>
-                                <span class="checkmark"></span>.ai
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Country TLDs</label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".in" checked>
-                                <span class="checkmark"></span>.in
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".us">
-                                <span class="checkmark"></span>.us
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".uk">
-                                <span class="checkmark"></span>.uk
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".ca">
-                                <span class="checkmark"></span>.ca
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".de">
-                                <span class="checkmark"></span>.de
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".au">
-                                <span class="checkmark"></span>.au
-                            </label>
-                            <label class="checkbox-container">
-                                <input type="checkbox" name="tlds" value=".jp">
-                                <span class="checkmark"></span>.jp
-                            </label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".com" checked><span class="checkmark"></span>.com</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".net"><span class="checkmark"></span>.net</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".org"><span class="checkmark"></span>.org</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".co"><span class="checkmark"></span>.co</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".io" checked><span class="checkmark"></span>.io</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".ai" checked><span class="checkmark"></span>.ai</label>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="avoid">Avoid Keywords (Optional)</label>
+                        <label>Country TLDs</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".in" checked><span class="checkmark"></span>.in</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".us"><span class="checkmark"></span>.us</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".uk"><span class="checkmark"></span>.uk</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".ca"><span class="checkmark"></span>.ca</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".de"><span class="checkmark"></span>.de</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".au"><span class="checkmark"></span>.au</label>
+                            <label class="checkbox-container"><input type="checkbox" name="tlds" value=".jp"><span class="checkmark"></span>.jp</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group col-span-2">
+                        <label for="avoid">Avoid Keywords <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
                         <input type="text" id="avoid" placeholder="e.g. labs, tech, hub (comma separated)">
-                        <div class="help-text">Avoid these keywords in names.</div>
+                        <div class="help-text">Avoid these keywords in generated names.</div>
                     </div>
                 </div>
 
@@ -158,21 +124,21 @@
         </section>
 
         <!-- Loading State -->
-        <section class="loading-state hidden" id="loading-area">
+        <section class="loading-state hidden glass-card" id="loading-area">
             <div class="spinner-container">
                 <div class="double-bounce1"></div>
                 <div class="double-bounce2"></div>
             </div>
             <h3>Generating &amp; Checking Domains</h3>
-            <p id="loading-step">Running AI, Morphological, and Recombination models...</p>
+            <p id="loading-step">Running AI, Morphological, and Recombination models…</p>
             <div class="progress-bar-container">
                 <div class="progress-bar" id="progress-bar"></div>
             </div>
         </section>
 
-        <!-- Results Section -->
+        <!-- Results -->
         <section class="results-container hidden" id="results-area">
-            <!-- Analytics Summary Row -->
+            <!-- Metrics -->
             <div class="analytics-row">
                 <div class="metric-card">
                     <div class="metric-header">
@@ -207,39 +173,40 @@
                     <button class="filter-btn active" data-filter="all">All</button>
                     <button class="filter-btn" data-filter="available">Available Only</button>
                     <button class="filter-btn" data-filter="premium">High Brand Score</button>
+                    <button class="btn-export btn-export-csv" id="export-csv-btn"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+                    <button class="btn-export btn-export-json" id="export-json-btn"><i class="fa-solid fa-file-code"></i> Export JSON</button>
                 </div>
             </div>
 
             <div class="results-grid" id="results-grid">
-                <!-- Result cards are injected dynamically -->
+                <!-- Cards injected by JS -->
             </div>
         </section>
 
-        <!-- Architecture Overview Banner -->
+        <!-- Footer Specs -->
         <footer class="system-specs">
-            <h3>Engine Architecture Specifications</h3>
+            <h3>Engine Architecture</h3>
             <div class="spec-grid">
                 <div class="spec-item">
                     <span class="spec-label">Backend Stack</span>
-                    <span class="spec-val">Go 1.26 + Fiber + G-Routines</span>
+                    <span class="spec-val">Go 1.26 + Fiber</span>
                 </div>
                 <div class="spec-item">
-                    <span class="spec-label">Worker Pool Concurrency</span>
-                    <span class="spec-val">Dynamic (30 concurrent workers)</span>
+                    <span class="spec-label">Worker Pool</span>
+                    <span class="spec-val">30 concurrent</span>
                 </div>
                 <div class="spec-item">
                     <span class="spec-label">Caching Tier</span>
-                    <span class="spec-val">Redis cache (TTL 24 hours)</span>
+                    <span class="spec-val">Redis TTL 24h</span>
                 </div>
                 <div class="spec-item">
-                    <span class="spec-label">Metrics Tier</span>
-                    <span class="spec-val">Prometheus + /metrics ready</span>
+                    <span class="spec-label">Metrics</span>
+                    <span class="spec-val">Prometheus ready</span>
                 </div>
             </div>
         </footer>
     </main>
 
-    <!-- Custom JS -->
     <script src="app.js"></script>
 </body>
 </html>

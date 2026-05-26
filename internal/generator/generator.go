@@ -17,9 +17,9 @@ type Orchestrator struct {
 	hybridGen *HybridGenerator
 }
 
-func NewOrchestrator(openAIKey string) *Orchestrator {
+func NewOrchestrator(geminiKey string) *Orchestrator {
 	return &Orchestrator{
-		aiGen:     NewAIGenerator(openAIKey),
+		aiGen:     NewAIGenerator(geminiKey),
 		morphGen:  NewMorphologicalGenerator(),
 		hybridGen: NewHybridGenerator(),
 	}

@@ -1,3 +1,4 @@
+version: '3.8'
 
 services:
   postgres:
@@ -6,7 +7,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: nameforge
     ports:
       - "5433:5432"
@@ -17,20 +18,31 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   redis:
     image: redis:7-alpine
     container_name: nameforge_redis
     restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-nameforgesecretredis}
     ports:
       - "6380:6379"
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-nameforgesecretredis}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   nameforge:
     build:
@@ -42,24 +54,33 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
-      - LOG_LEVEL=debug
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/nameforge?sslmode=disable
-      - REDIS_URL=redis://redis:6379/0
-      - USE_MOCK_PROVIDERS=true
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/nameforge?sslmode=disable
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-nameforgesecretredis}@redis:6379/0
+      - USE_MOCK_PROVIDERS=false
       - WORKER_COUNT=20
       - CACHE_TTL_HOURS=24
       - RATE_LIMIT_MAX=100
       - RATE_LIMIT_WINDOW_MS=60000
-      - OPENAI_API_KEY=
-      - PORKBUN_API_KEY=
-      - PORKBUN_SECRET_KEY=
-      - NAMECHEAP_USERNAME=
-      - NAMECHEAP_API_KEY=
+      - APP_ENV=${APP_ENV:-development}
+      - JWT_SECRET=${JWT_SECRET:-nameforge-default-super-secret-key-change-in-prod}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-nameforge-admin-secret-seed-key}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
 volumes:
   pgdata:

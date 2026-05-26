@@ -76,47 +76,49 @@ func (m *MorphologicalGenerator) Generate(req *models.GenerateRequest) []string 
 	return names
 }
 
-// truncateWord keeps the first N chars of a word.
+// truncateWord keeps the first N runes of a word.
 func truncateWord(word string, length int) string {
-	if len(word) <= length {
+	runes := []rune(word)
+	if len(runes) <= length {
 		return word
 	}
-	return word[:length]
+	return string(runes[:length])
 }
 
 // smoothVowelsAndConsonants applies vowel smoothing and handles consonant clashes.
 func smoothVowelsAndConsonants(base, suffix string) string {
-	isVowel := func(b byte) bool {
-		return strings.ContainsAny(string(b), "aeiouyAEIOUY")
+	isVowel := func(r rune) bool {
+		return strings.ContainsRune("aeiouyAEIOUY", r)
 	}
 
-	if len(base) == 0 {
+	baseRunes := []rune(base)
+	suffixRunes := []rune(suffix)
+
+	if len(baseRunes) == 0 {
 		return suffix
 	}
-	if len(suffix) == 0 {
+	if len(suffixRunes) == 0 {
 		return base
 	}
 
-	lastCharBase := base[len(base)-1]
-	firstCharSuffix := suffix[0]
+	lastCharBase := baseRunes[len(baseRunes)-1]
+	firstCharSuffix := suffixRunes[0]
 
 	// 1. Vowel Smoothing: if both are vowels, drop one (usually base's last)
 	if isVowel(lastCharBase) && isVowel(firstCharSuffix) {
-		return base[:len(base)-1] + suffix
+		return string(baseRunes[:len(baseRunes)-1]) + suffix
 	}
 
-	// 2. Consonant Clash: if both are consonants, insert a smoothing vowel (e, i, o) in 70% of cases
+	// 2. Consonant Clash: if both are consonants, insert a smoothing vowel (e, i, o, a) in 70% of cases
 	if !isVowel(lastCharBase) && !isVowel(firstCharSuffix) {
-		// Exceptions: e.g. "xt" or "st" are fine.
 		clashExceptions := map[string]bool{
 			"st": true, "rt": true, "nd": true, "nt": true, "tr": true, "fl": true, "gr": true, "pr": true,
 		}
 		pair := string(lastCharBase) + string(firstCharSuffix)
 		if !clashExceptions[pair] {
-			smoothingVowels := []string{"e", "i", "o", "a"}
-			// seeded random isn't strictly needed for a quick index pick
+			smoothingVowels := []rune{'e', 'i', 'o', 'a'}
 			idx := int(lastCharBase+firstCharSuffix) % len(smoothingVowels)
-			return base + smoothingVowels[idx] + suffix
+			return string(baseRunes) + string(smoothingVowels[idx]) + suffix
 		}
 	}
 

@@ -127,9 +127,27 @@ func (m *MockProvider) GetPrice(ctx context.Context, domain string) (*PriceResul
 		}
 	}
 
+	var plans []PricePlan
+	plans = append(plans, PricePlan{
+		Name:     m.platform + " (1-Yr Domain Only)",
+		Price:    price,
+		Currency: m.currency,
+	})
+	plans = append(plans, PricePlan{
+		Name:     m.platform + " (2-Yr Term Avg)",
+		Price:    price * 1.25,
+		Currency: m.currency,
+	})
+	plans = append(plans, PricePlan{
+		Name:     m.platform + " (Premium Bundle)",
+		Price:    price * 1.5,
+		Currency: m.currency,
+	})
+
 	return &PriceResult{
 		Price:    price,
 		Currency: m.currency,
 		Platform: m.platform,
+		Plans:    plans,
 	}, nil
 }

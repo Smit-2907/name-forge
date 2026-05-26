@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,38 +18,52 @@ import (
 
 type AIGenerator struct {
 	APIKey string
+	Client *http.Client
 }
 
 func NewAIGenerator(apiKey string) *AIGenerator {
-	return &AIGenerator{APIKey: apiKey}
+	return &AIGenerator{
+		APIKey: apiKey,
+		Client: &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        10,
+				MaxIdleConnsPerHost: 2,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
+	}
 }
 
-type openaiMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+type geminiPart struct {
+	Text string `json:"text"`
 }
 
-type openaiRequest struct {
-	Model       string          `json:"model"`
-	Messages    []openaiMessage `json:"messages"`
-	Temperature float64         `json:"temperature"`
-	MaxTokens   int             `json:"max_tokens"`
+type geminiContent struct {
+	Parts []geminiPart `json:"parts"`
 }
 
-type openaiChoice struct {
-	Message openaiMessage `json:"message"`
+type geminiRequest struct {
+	Contents []geminiContent `json:"contents"`
 }
 
-type openaiResponse struct {
-	Choices []openaiChoice `json:"choices"`
+type geminiCandidate struct {
+	Content geminiContent `json:"content"`
 }
 
-// Generate uses OpenAI API or falls back to template-based generation if no API key exists.
+type geminiResponse struct {
+	Candidates []geminiCandidate `json:"candidates"`
+}
+
+// Generate uses Gemini API or falls back to template-based generation if no API key exists.
 func (a *AIGenerator) Generate(ctx context.Context, req *models.GenerateRequest) ([]string, error) {
 	if a.APIKey == "" {
-		log.Info().Msg("OpenAI API key not set, using smart fallback local generator.")
+		log.Info().Msg("Gemini API key not set, using smart fallback local generator.")
 		return a.generateFallback(req), nil
 	}
+
+	// Escape double quotes to prevent prompt template hijacking
+	escapedDesc := strings.ReplaceAll(req.Description, `"`, `\"`)
 
 	prompt := fmt.Sprintf(`You are a world-class startup naming consultant.
 Generate 40 short, highly pronounceable, brandable startup names for the following business.
@@ -63,15 +78,16 @@ Rules:
 3. Keep it as single words (e.g. Veltrix, Auralis, Novaryn).
 4. No hyphens or spaces.
 5. Return ONLY a comma-separated list of names. No intro, no explanation, no bullet points.
-`, req.Description, strings.Join(req.Style, ", "), strings.Join(req.Themes, ", "), strings.Join(req.Avoid, ", "))
+`, escapedDesc, strings.Join(req.Style, ", "), strings.Join(req.Themes, ", "), strings.Join(req.Avoid, ", "))
 
-	body := openaiRequest{
-		Model: "gpt-4o-mini",
-		Messages: []openaiMessage{
-			{Role: "user", Content: prompt},
+	body := geminiRequest{
+		Contents: []geminiContent{
+			{
+				Parts: []geminiPart{
+					{Text: prompt},
+				},
+			},
 		},
-		Temperature: 0.85,
-		MaxTokens:   500,
 	}
 
 	jsonBytes, err := json.Marshal(body)
@@ -79,43 +95,62 @@ Rules:
 		return nil, err
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(jsonBytes))
+	targetURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=%s", a.APIKey)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", targetURL, bytes.NewBuffer(jsonBytes))
 	if err != nil {
 		return nil, err
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+a.APIKey)
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(httpReq)
+	resp, err := a.Client.Do(httpReq)
 	if err != nil {
-		log.Warn().Err(err).Msg("OpenAI call failed, falling back to local generator.")
+		log.Warn().Err(err).Msg("Gemini call failed, falling back to local generator.")
 		return a.generateFallback(req), nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Warn().Msgf("OpenAI API returned non-OK status: %d. Falling back to local generator.", resp.StatusCode)
+		log.Warn().Msgf("Gemini API returned non-OK status: %d. Falling back to local generator.", resp.StatusCode)
 		return a.generateFallback(req), nil
 	}
 
-	var res openaiResponse
+	var res geminiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 		return nil, err
 	}
 
-	if len(res.Choices) == 0 {
+	if len(res.Candidates) == 0 || len(res.Candidates[0].Content.Parts) == 0 {
 		return a.generateFallback(req), nil
 	}
 
-	content := res.Choices[0].Message.Content
-	items := strings.Split(content, ",")
-	names := make([]string, 0, len(items))
-	for _, item := range items {
+	content := res.Candidates[0].Content.Parts[0].Text
+
+	// Defensive parsing: split by commas or newlines
+	content = strings.ReplaceAll(content, "\r", "")
+	var rawItems []string
+	if strings.Contains(content, ",") {
+		rawItems = strings.Split(content, ",")
+	} else {
+		rawItems = strings.Split(content, "\n")
+	}
+
+	names := make([]string, 0, len(rawItems))
+	for _, item := range rawItems {
 		cleaned := strings.TrimSpace(item)
-		cleaned = strings.ReplaceAll(cleaned, "\n", "")
-		cleaned = strings.ReplaceAll(cleaned, "\r", "")
+		// Clean markdown bullet points
+		cleaned = strings.TrimPrefix(cleaned, "*")
+		cleaned = strings.TrimPrefix(cleaned, "-")
+		cleaned = strings.TrimSpace(cleaned)
+
+		// Remove numbered prefixes (e.g., "1. Name" -> "Name")
+		if idx := strings.Index(cleaned, "."); idx > 0 && idx < 4 {
+			numPrefix := cleaned[:idx]
+			if _, err := strconv.Atoi(numPrefix); err == nil {
+				cleaned = strings.TrimSpace(cleaned[idx+1:])
+			}
+		}
+
 		if cleaned != "" {
 			names = append(names, cleaned)
 		}
