@@ -1,0 +1,29 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/generate",
+      "destination": "https://name-forge-backend.up.railway.app/generate"
+    },
+    {
+      "source": "/api/generate",
+      "destination": "https://name-forge-backend.up.railway.app/api/generate"
+    },
+    {
+      "source": "/health",
+      "destination": "https://name-forge-backend.up.railway.app/health"
+    },
+    {
+      "source": "/api/analytics",
+      "destination": "https://name-forge-backend.up.railway.app/api/analytics"
+    },
+    {
+      "source": "/metrics",
+      "destination": "https://name-forge-backend.up.railway.app/metrics"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/web/$1"
+    }
+  ]
+}
